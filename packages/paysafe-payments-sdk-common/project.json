@@ -1,0 +1,17 @@
+{
+  "name": "paysafe-payments-sdk-common",
+  "root": "packages/paysafe-payments-sdk-common",
+  "sourceRoot": "packages/paysafe-payments-sdk-common/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/paysafe-payments-sdk-common",
+        "tsConfig": "packages/paysafe-payments-sdk-common/tsconfig.lib.json",
+        "main": "packages/paysafe-payments-sdk-common/src/index.tsx"
+      }
+    }
+  }
+}

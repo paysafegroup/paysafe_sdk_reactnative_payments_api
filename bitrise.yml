@@ -1,0 +1,523 @@
+format_version: "11"
+default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
+project_type: react-native
+workflows:
+  _checkout:
+    steps:
+      - activate-ssh-key@4:
+          run_if: '{{getenv "SSH_RSA_PRIVATE_KEY" | ne ""}}'
+      - git-clone@8:
+          inputs:
+            - merge_pr: "no"
+      - script@1:
+          title: Fetch PR destination branch
+          inputs:
+            - content: |-
+                if [[ -z "$BITRISE_PULL_REQUEST" ]] || [[ -z "$BITRISEIO_GIT_BRANCH_DEST" ]]; then
+                    exit 0
+                fi
+
+                PROPERTIES="--jobs=10 --no-tags --no-recurse-submodules"
+
+                if [[ -n $GIT_CHECKOUT_DEPTH ]]; then
+                    PROPERTIES+=" --depth=$GIT_CHECKOUT_DEPTH"
+                fi
+
+                git fetch $PROPERTIES origin "refs/heads/$BITRISEIO_GIT_BRANCH_DEST"
+  _setup_environment_prerequisites:
+    steps:
+      - script@1:
+          title: Install node dependencies
+          inputs:
+            - content: |-
+                #!/usr/bin/env bash
+                # fail if any commands fails
+                set -e
+                # make pipelines' return status equal the last command to exit with a non-zero status, or zero if all commands exit successfully
+                set -o pipefail
+                # debug log
+                set -x
+
+                [ ! -d node_modules ] &&
+                npm ci --loglevel warn --yes ||
+                echo package.json and package-lock.json unchanged. Using cache.
+      - script@1:
+          title: Install node dependencies - expo demo app
+          inputs:
+            - content: |-
+                #!/usr/bin/env bash
+                # fail if any commands fails
+                set -e
+                # make pipelines' return status equal the last command to exit with a non-zero status, or zero if all commands exit successfully
+                set -o pipefail
+                # debug log
+                set -x
+
+                ORIGINAL_DIR=$(pwd)
+                cd DemoAppExpo
+
+                if [ ! -d node_modules ]; then
+                  npm ci --loglevel warn --yes
+                else
+                  echo "DemoAppExpo/package.json and DemoAppExpo/package-lock.json unchanged. Using cache."
+                fi
+
+                cd "$ORIGINAL_DIR"
+      - set-java-version@1:
+          inputs:
+            - set_java_version: "17"
+      - script@1:
+          title: Set ruby version to 3.2
+          inputs:
+            - content: |-
+                #!/usr/bin/env bash
+                # fail if any commands fails
+                set -e
+                # make pipelines' return status equal the last command to exit with a non-zero status, or zero if all commands exit successfully
+                set -o pipefail
+                # debug log
+                set -x
+
+                RUBY_VERSION=3.2
+                asdf install ruby $RUBY_VERSION
+                asdf global ruby $RUBY_VERSION
+                echo "$RUBY_VERSION" > .ruby-version
+      - script@1:
+          title: Run initial iOS setup
+          inputs:
+            - content: |-
+                #!/usr/bin/env bash
+                # fail if any commands fails
+                set -e
+                # make pipelines' return status equal the last command to exit with a non-zero status, or zero if all commands exit successfully
+                set -o pipefail
+                # debug log
+                set -x
+
+                cd demo/demo-app/ios
+
+                bundle config set --local path "$HOME/vendor/bundle"
+                bundle install
+
+                bundle exec pod install --repo-update
+      - fastlane@3:
+          inputs:
+            - lane: run install_swift_tooling_in_bitrise
+            - update_fastlane: "false"
+            - work_dir: $BITRISE_SOURCE_DIR/demo/demo-app/ios
+          title: 'Install Swift Tooling '
+  primary:
+    before_run:
+      - _checkout
+      - _cache_pull
+      - _setup_environment_prerequisites
+      - _prebuild_validations
+      - _run_danger
+      - _compile_and_run_tests
+      - _run_sonar_scanner
+      - _publish_to_github
+      - _publish_to_npm
+    steps:
+      - script@1:
+          title: Check branch name for slack notification
+          is_always_run: true
+          run_if: '{{.IsBuildFailed}}'
+          inputs:
+            - content: |
+                #!/usr/bin/env bash
+                # fail if any commands fails
+                set -e
+                # make pipelines' return status equal the last command to exit with a non-zero status, or zero if all commands exit successfully
+                set -o pipefail
+                # debug log
+                set -x
+
+                if [[ "$BITRISE_GIT_BRANCH" == "develop" ]] || [[ $BITRISE_GIT_BRANCH =~ release\/.+ ]] || [[ "$BITRISE_GIT_BRANCH" == "master" ]]; then
+                  envman add --key "NOTIFY_FAILED_BUILD" --value "TRUE"
+                fi
+      - slack@4:
+          is_always_run: true
+          run_if: '{{.IsBuildFailed | and (enveq "NOTIFY_FAILED_BUILD" "TRUE")}}'
+          inputs:
+            - text: ""
+            - color: '#2EB886'
+            - color_on_error: '#A30200'
+            - channel: '#dw-mobile-android'
+            - timestamp: "no"
+            - text_on_error: '@channel'
+            - webhook_url: $SLACK_WEBHOOK_URL
+          title: Notify slack on failure for master
+      - deploy-to-bitrise-io@2: { }
+    after_run:
+      - _cache_push
+  _cache_pull:
+    steps:
+      - restore-cache@2:
+          title: Restore Cache - node modules
+          inputs:
+            - key: cache-npm-{{ .Arch }}-{{ .OS }}-{{ checksum "package-lock.json" "package.json" }}
+      - restore-cache@2:
+          title: Restore Cache - node modules expo demo app
+          inputs:
+            - key: cache-npm-{{ .Arch }}-{{ .OS }}-{{ checksum "DemoAppExpo/package-lock.json"
+                "DemoAppExpo/package.json" }}
+      - restore-cache@2:
+          title: Restore Cached Venmo Version
+          inputs:
+            - key: cache-venmo-version-{{ .OS }}-{{ .Arch }}
+      - restore-cache@2:
+          title: Restore Cached Google Pay Version
+          inputs:
+            - key: cache-google-pay-version-{{ .OS }}-{{ .Arch }}
+      - restore-cache@2:
+          title: Restore Cached Card Payments Version
+          inputs:
+            - key: cache-card-payments-version-{{ .OS }}-{{ .Arch }}
+      - restore-cache@2:
+          title: Restore Cache - swift tooling installed via mint
+          inputs:
+            - key: cache-{{ .Arch }}-{{ .OS }}-{{ checksum "demo/demo-app/ios/Mintfile" }}
+      - restore-cache@2:
+          title: Restore Cache - ruby gems
+          inputs:
+            - key: cache-ruby-{{ .Arch }}-{{ .OS }}-{{ checksum "demo/demo-app/ios/Gemfile.lock" }}
+      - restore-cache@2:
+          title: Restore Cache - sonar
+          inputs:
+            - key: cache-sonar-{{ .Arch }}-{{ .OS }}
+  _cache_push:
+    steps:
+      - save-cache@1:
+          title: Cache - node modules
+          inputs:
+            - key: cache-npm-{{ .Arch }}-{{ .OS }}-{{ checksum "package-lock.json" "package.json" }}
+            - paths: node_modules
+          run_if: .IsCI | and (not .IsPR)
+      - save-cache@1:
+          title: Cache - node modules expo demo app
+          inputs:
+            - key: cache-npm-{{ .Arch }}-{{ .OS }}-{{ checksum "DemoAppExpo/package-lock.json"
+                "DemoAppExpo/package.json" }}
+            - paths: DemoAppExpo/node_modules
+          run_if: ".IsCI | and (not .IsPR)"
+      - save-cache@1:
+          title: Cache - venmo package version
+          inputs:
+            - key: cache-venmo-version-{{ .OS }}-{{ .Arch }}
+            - paths: packages/paysafe-venmo/cached-package.json
+          run_if: .IsCI | and (not .IsPR)
+      - save-cache@1:
+          title: Cache - google pay package version
+          inputs:
+            - key: cache-google-pay-version-{{ .OS }}-{{ .Arch }}
+            - paths: packages/paysafe-google-pay/cached-package.json
+          run_if: .IsCI | and (not .IsPR)
+      - save-cache@1:
+          title: Cache - card payments package version
+          inputs:
+            - key: cache-card-payments-version-{{ .OS }}-{{ .Arch }}
+            - paths: packages/paysafe-card-payments/cached-package.json
+          run_if: .IsCI | and (not .IsPR)
+      - save-cache@1:
+          title: Cache - swift tooling installed via mint
+          inputs:
+            - key: cache-{{ .Arch }}-{{ .OS }}-{{ checksum "demo/demo-app/ios/Mintfile" }}
+            - paths: |-
+                $HOME/.mint
+                $HOME/.mint/bin
+          run_if: .IsCI | and (not .IsPR)
+      - save-cache@1:
+          inputs:
+            - key: cache-ruby-{{ .Arch }}-{{ .OS }}-{{ checksum "demo/demo-app/ios/Gemfile.lock" }}
+            - paths: $HOME/vendor/bundle
+          run_if: .IsCI | and (not .IsPR)
+          title: Cache - ruby gems
+      - save-cache@1:
+          inputs:
+            - paths: $HOME/.sonar/cache
+            - key: cache-sonar-{{ .Arch }}-{{ .OS }}
+          run_if: .IsCI | and (not .IsPR)
+          title: Save Cache - sonar
+
+  _prebuild_validations:
+    steps:
+      - script@1:
+          title: Run TypeScript lint
+          inputs:
+            - content: |-
+                #!/usr/bin/env bash
+                # fail if any commands fails
+                set -e
+                # make pipelines' return status equal the last command to exit with a non-zero status, or zero if all commands exit successfully
+                set -o pipefail
+                # debug log
+                set -x
+
+                npx eslint "**/*.{ts,tsx}" -f json | sed -n '/\[/,/\]/p' > eslint-report.json
+      - script@1:
+          title: Run Android lint
+          inputs:
+            - content: |-
+                #!/usr/bin/env bash
+                # fail if any commands fails
+                set -e
+                # make pipelines' return status equal the last command to exit with a non-zero status, or zero if all commands exit successfully
+                set -o pipefail
+                # debug log
+                set -x
+
+                sh android-lint.sh
+      - fastlane@3:
+          inputs:
+            - lane: lint
+            - work_dir: $BITRISE_SOURCE_DIR/demo/demo-app/ios
+          title: Run Swift Lint
+          is_always_run: true
+  _run_danger:
+    steps:
+      - script@1:
+          title: Runs danger
+          is_always_run: true
+          inputs:
+            - content: |-
+                #!/usr/bin/env bash
+                # fail if any commands fails
+                set -e
+                # debug log
+                set -x
+
+                npx danger ci
+  _compile_and_run_tests:
+    steps:
+      - script@1:
+          title: Run Nx build
+          inputs:
+            - content: |-
+                #!/usr/bin/env bash
+                # fail if any commands fails
+                set -e
+                # make pipelines' return status equal the last command to exit with a non-zero status, or zero if all commands exit successfully
+                set -o pipefail
+                # debug log
+                set -x
+
+                npx nx reset
+                cd demo/demo-app/
+                npx nx run build --no-cloud --verbose
+      - fastlane@3:
+          inputs:
+            - lane: tests
+            - work_dir: $BITRISE_SOURCE_DIR/demo/demo-app/ios
+          title: Run iOS tests
+      - script@1:
+          title: Parse iOS test results
+          inputs:
+            - content: |
+                #!/usr/bin/env bash
+                set -e
+                set -o pipefail
+                set -x
+
+                xcresultparser -c -o xml tests-report/DemoApp.xcresult > sonarqube-generic-ios-coverage.xml
+
+      - script@1:
+          title: Run Typescript unit tests
+          inputs:
+            - content: |-
+                #!/usr/bin/env bash
+                set -e
+                set -o pipefail
+                set -x
+
+                npx jest --coverage
+
+      - script@1:
+          title: Run Android unit tests
+          inputs:
+            - content: |-
+                #!/usr/bin/env bash
+                # fail if any commands fails
+                set -e
+                # make pipelines' return status equal the last command to exit with a non-zero status, or zero if all commands exit successfully
+                set -o pipefail
+                # debug log
+                set -x
+
+                ./run-android-unit-tests.sh
+  _run_sonar_scanner:
+    steps:
+      - script@1:
+          title: Install SonarQube Scanner
+          inputs:
+            - content: |-
+                #!/usr/bin/env bash
+                # fail if any commands fails
+                set -e
+                # make pipelines' return status equal the last command to exit with a non-zero status, or zero if all commands exit successfully
+                set -o pipefail
+                # debug log
+                set -x
+
+                SONAR_CACHE_DIR="$HOME/.sonar/cache"
+
+                if [[ ! -d "$SONAR_CACHE_DIR" || -z "$(ls -A "$SONAR_CACHE_DIR")" ]]; then
+                  echo "SonarQube Scanner not found in cache. Installing..."
+                  brew install sonar-scanner
+                else
+                  echo "SonarQube Scanner is cached. Skipping installation."
+                fi
+      - script@1:
+          title: Debug SonarQube Configuration
+          inputs:
+            - content: |-
+                #!/usr/bin/env bash
+                # Fail if any commands fail
+                set -e
+                # Make pipelines' return status equal to the last command to exit with a non-zero status, or zero if all commands exit successfully
+                set -o pipefail
+                # Debug log
+                set -x
+
+                if [[ -z "${SONAR_AUTH_TOKEN}" ]]; then
+                    echo "Error: SONAR_AUTH_TOKEN is not set or empty."
+                    exit 1
+                else
+                    echo "SONAR_AUTH_TOKEN is set."
+                fi
+
+                echo "Checking SonarQube server connectivity..."
+                curl -I https://sonar.neterra.paysafe.com/ || exit 1
+
+      - script@1:
+          title: Analyze with Sonar
+          inputs:
+            - content: |-
+                #!/usr/bin/env bash
+                # Fail if any commands fail
+                set -e
+                # Make pipelines' return status equal to the last command to exit with a non-zero status, or zero if all commands exit successfully
+                set -o pipefail
+                # Debug log
+                set -x
+
+                if [[ -z $SONAR_HOST ]]; then
+                    echo "SONAR_HOST is not defined"
+                    exit 1
+                fi
+
+                PROPERTIES="-Dsonar.host.url=$SONAR_HOST -Dsonar.qualitygate.wait=true -Dsonar.ws.timeout=900 -Dsonar.qualitygate.timeout=600"
+
+                if [[ -n $SONAR_AUTH_TOKEN ]]; then
+                    PROPERTIES+=" -Dsonar.login=$SONAR_AUTH_TOKEN"
+                fi
+
+                if [[ -n $BITRISE_PULL_REQUEST ]]; then
+                    PROPERTIES+=" -Dsonar.pullrequest.key=$BITRISE_PULL_REQUEST"
+                    PROPERTIES+=" -Dsonar.pullrequest.branch=$BITRISE_GIT_BRANCH"
+                    PROPERTIES+=" -Dsonar.pullrequest.base=$BITRISEIO_GIT_BRANCH_DEST"
+                else
+                    PROPERTIES+=" -Dsonar.branch.name=$BITRISE_GIT_BRANCH"
+                fi
+
+                sonar-scanner $PROPERTIES
+
+  _publish_to_github:
+    steps:
+      - fastlane@3:
+          title: Push to GitHub
+          inputs:
+            - lane: push_to_github
+            - enable_cache: "no"
+            - update_fastlane: "false"
+          run_if: '{{ enveq "BITRISE_GIT_BRANCH" "master" }}'
+
+  _publish_to_npm:
+    steps:
+      - script@1:
+          title: Publish npm Packages as Private (if version changed)
+          inputs:
+            - content: |-
+                #!/usr/bin/env bash
+                set -euo pipefail
+                set -x
+
+                if [[ -z "${NPM_TOKEN:-}" ]]; then
+                  echo "Error: NPM_TOKEN is not set."
+                  exit 1
+                fi
+
+                PACKAGES=("paysafe-venmo" "paysafe-google-pay" "paysafe-card-payments")
+
+                for PACKAGE in "${PACKAGES[@]}"; do
+                  CURRENT_JSON="packages/$PACKAGE/package.json"
+                  CACHED_JSON="packages/$PACKAGE/cached-package.json"
+
+                  NEW_VERSION=$(jq -r '.version' "$CURRENT_JSON")
+
+                  if [[ ! -f "$CACHED_JSON" ]]; then
+                    echo "No cached version for $PACKAGE. Publishing first version..."
+
+                    cd "packages/$PACKAGE"
+                    echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
+                    npm publish --access=restricted
+
+                    cp package.json cached-package.json
+                    cd - > /dev/null
+
+                    continue
+                  fi
+
+                  OLD_VERSION=$(jq -r '.version' "$CACHED_JSON")
+
+                  echo "$PACKAGE - old: $OLD_VERSION | new: $NEW_VERSION"
+
+                  if [[ "$OLD_VERSION" == "$NEW_VERSION" ]]; then
+                    echo "No version change for $PACKAGE. Skipping publish."
+                    continue
+                  fi
+
+                  echo "Publishing $PACKAGE..."
+
+                  cd "packages/$PACKAGE"
+                  echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
+                  npm publish --access=restricted
+
+                  cp package.json cached-package.json
+
+                  cd - > /dev/null
+                done
+          run_if: '{{ enveq "BITRISE_GIT_BRANCH" "master" }}'
+meta:
+  bitrise.io:
+    stack: osx-xcode-15.4.x
+    machine_type_id: g2-m1.4core
+app:
+  envs:
+    - opts:
+        is_expand: false
+      PROJECT_LOCATION: .
+    - opts:
+        is_expand: false
+      MODULE: demo
+    - opts:
+        is_expand: false
+      VARIANT: debug
+    - opts:
+        is_expand: false
+      SONAR_HOST: https://sonar.neterra.paysafe.com/
+    - opts:
+        is_expand: false
+      GRADLEW_PATH: ./gradlew
+    - opts:
+        is_expand: false
+      DANGER_GITLAB_API_BASE_URL: https://gitlab.paysafe.cloud/api/v4
+    - opts:
+        is_expand: false
+      DANGER_GITLAB_HOST: gitlab.paysafe.cloud
+trigger_map:
+  - push_branch: master
+    workflow: primary
+  - push_branch: develop
+    workflow: primary
+  - pull_request_source_branch: '*'
+    workflow: primary

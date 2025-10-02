@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:tools="http://schemas.android.com/tools">
+
+  <uses-permission android:name="android.permission.INTERNET" />
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+  <application
+    android:name=".MainApplication"
+    android:allowBackup="false"
+    android:label="@string/app_name"
+    android:supportsRtl="true"
+    android:theme="@style/AppTheme"
+    android:usesCleartextTraffic="false">
+    <activity android:name=".GooglePay.GooglePayActivity" />
+    <activity
+      android:name=".MainActivity"
+      android:exported="true"
+      android:screenOrientation="portrait"
+      tools:ignore="LockedOrientationActivity">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
+      <intent-filter>
+        <action android:name="android.intent.action.VIEW" />
+
+        <category android:name="android.intent.category.DEFAULT" />
+        <category android:name="android.intent.category.BROWSABLE" />
+
+        <data android:scheme="${applicationId}.braintree" />
+      </intent-filter>
+    </activity>
+
+
+    <meta-data
+      android:name="com.google.android.gms.wallet.api.enabled"
+      android:value="true" />
+
+  </application>
+
+</manifest>

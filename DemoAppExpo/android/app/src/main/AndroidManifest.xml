@@ -1,0 +1,71 @@
+<!-- Copyright Paysafe 2025. All rights reserved. -->
+
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+  package="com.DemoAppExpo">
+
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+  <uses-permission android:name="android.permission.INTERNET" />
+  <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+  <uses-permission android:name="android.permission.VIBRATE" />
+
+  <queries>
+    <intent>
+      <action android:name="android.intent.action.VIEW" />
+      <category android:name="android.intent.category.BROWSABLE" />
+      <data android:scheme="https" />
+    </intent>
+  </queries>
+  <application
+    android:name=".MainApplication"
+    android:allowBackup="false"
+    android:icon="@mipmap/ic_launcher"
+    android:label="@string/app_name"
+    android:roundIcon="@mipmap/ic_launcher_round"
+    android:supportsRtl="true"
+    android:theme="@style/AppTheme"
+    android:usesCleartextTraffic="false">
+    <meta-data
+      android:name="com.google.android.gms.wallet.api.enabled"
+      android:value="true" />
+    <meta-data
+      android:name="expo.modules.updates.ENABLED"
+      android:value="true" />
+    <meta-data
+      android:name="expo.modules.updates.EXPO_SDK_VERSION"
+      android:value="52.0.0" />
+    <meta-data
+      android:name="expo.modules.updates.EXPO_UPDATES_CHECK_ON_LAUNCH"
+      android:value="ALWAYS" />
+    <meta-data
+      android:name="expo.modules.updates.EXPO_UPDATES_LAUNCH_WAIT_MS"
+      android:value="0" />
+    <meta-data
+      android:name="expo.modules.updates.EXPO_UPDATE_URL"
+      android:value="https://exp.host/DemoAppExpo" />
+    <activity android:name=".GooglePay.GooglePayActivity" />
+    <activity android:name=".Venmo.VenmoActivity" />
+    <activity
+      android:name=".MainActivity"
+      android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|uiMode"
+      android:exported="true"
+      android:launchMode="singleTask"
+      android:screenOrientation="portrait"
+      android:windowSoftInputMode="adjustResize">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
+      <intent-filter>
+        <action android:name="android.intent.action.VIEW" />
+
+        <category android:name="android.intent.category.DEFAULT" />
+        <category android:name="android.intent.category.BROWSABLE" />
+
+        <data android:scheme="myapp" />
+        <data android:scheme="com.demoappexo" />
+        <data android:scheme="com.demoappexo" />
+        <data android:scheme="com.demoappexo.braintree" />
+      </intent-filter>
+    </activity>
+  </application>
+</manifest>

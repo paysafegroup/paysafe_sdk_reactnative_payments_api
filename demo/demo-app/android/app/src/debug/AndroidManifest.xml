@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright Paysafe 2025. All rights reserved. -->
+
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          xmlns:tools="http://schemas.android.com/tools">
+
+    <application
+            android:allowBackup="false"
+            android:usesCleartextTraffic="false"
+            tools:targetApi="28"
+            tools:ignore="GoogleAppIndexingWarning"/>
+</manifest>

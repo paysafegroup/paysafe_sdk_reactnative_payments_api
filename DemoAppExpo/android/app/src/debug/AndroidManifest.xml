@@ -1,0 +1,14 @@
+<!-- Copyright Paysafe 2025. All rights reserved. -->
+
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:tools="http://schemas.android.com/tools">
+
+  <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+  <application
+    android:allowBackup="false"
+    android:networkSecurityConfig="@xml/network_security_config"
+    android:usesCleartextTraffic="false"
+    tools:ignore="GoogleAppIndexingWarning"
+    tools:targetApi="28" />
+</manifest>

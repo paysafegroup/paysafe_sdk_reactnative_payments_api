@@ -1,0 +1,40 @@
+default_platform(:ios)
+
+platform :ios do
+  desc "Build native iOS DemoApp"
+  lane :build_ios_demo_app do
+    gym(
+        workspace: "./DemoApp.xcworkspace",
+        scheme: "DemoApp",
+        configuration: "Release",
+        destination: "generic/platform=iOS Simulator",
+        skip_archive: true,
+        skip_codesigning: true,
+        xcodebuild_formatter: "xcpretty"
+    )
+  end
+
+  desc "SwiftLint"
+  lane :lint do
+    swiftlint(
+      mode: :lint, # SwiftLint mode: :lint (default) or :autocorrect
+      output_file: "./swiftlint.json", # The path of the output file (optional)
+      config_file: "./.swiftlint.yml", # The path of the configuration file (optional)
+      ignore_exit_status: true, # Allow fastlane to continue even if SwiftLint returns a non-zero exit status
+      reporter: "json" #Output reporter - json can be imported into SonarQube
+    )
+  end
+
+  desc "Run tests"
+  lane :tests do
+    scan(
+      workspace: "./DemoApp.xcworkspace",
+      devices: ["iPhone SE (3rd generation)"],
+      scheme: "DemoApp",
+      code_coverage: true,
+      output_directory: "../../../tests-report",
+      result_bundle: true,
+      xcodebuild_formatter: "xcpretty"
+    )
+  end  
+end

@@ -1,0 +1,44 @@
+buildscript {
+  ext {
+    buildToolsVersion = "35.0.0"
+    minSdkVersion = 24
+    compileSdkVersion = 35
+    targetSdkVersion = 34
+    ndkVersion = "26.1.10909125"
+    kotlinVersion = "1.8.22"
+  }
+
+  repositories {
+    google()
+    mavenCentral()
+  }
+
+  dependencies {
+    classpath(libs.androidGradlePlugin)
+    classpath(libs.reactNativeGradlePlugin)
+    classpath(libs.kotlinGradlePlugin)
+    classpath(libs.jacoco)
+  }
+
+  subprojects {
+    afterEvaluate { project ->
+      project.apply from: file("../../../jacoco.gradle")
+    }
+  }
+
+  allprojects {
+    configurations.configureEach {
+      resolutionStrategy.eachDependency { details ->
+        if (details.requested.group == 'org.jetbrains.kotlin') {
+          details.useVersion '1.8.22'
+          details.because 'Force Kotlin version to avoid 1.9.24 from gradle plugin'
+        }
+      }
+    }
+  }
+}
+
+plugins {
+  id "com.facebook.react.rootproject"
+  id "org.jlleitschuh.gradle.ktlint" version "11.3.2"
+}

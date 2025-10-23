@@ -1,0 +1,77 @@
+{
+  "name": "react-native-paysafe-apple-pay",
+  "version": "0.0.0",
+  "description": "A React Native package for integrating Apple Pay using the Paysafe SDK.",
+  "main": "src/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src __tests__ --ext .ts,.tsx",
+    "lint:fix": "eslint src __tests__ --ext .ts,.tsx --fix",
+    "typecheck": "tsc --noEmit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/react-native-paysafe-apple-pay.git"
+  },
+  "keywords": [
+    "react-native",
+    "apple-pay",
+    "paysafe",
+    "payments"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "files": [
+    "src",
+    "ios",
+    "react-native-paysafe-apple-pay.podspec"
+  ],
+  "peerDependencies": {
+    "react": ">=16.0.0",
+    "react-native": ">=0.60.0"
+  },
+  "devDependencies": {
+    "typescript": "^4.0.0",
+    "jest": "^26.0.0",
+    "@types/jest": "^29.0.0",
+    "@types/react": "^18.0.0",
+    "@types/react-native": "^0.72.0",
+    "eslint": "^8.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "ts-jest": "^29.0.0"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "roots": ["<rootDir>/src", "<rootDir>/__tests__"],
+    "testMatch": ["**/__tests__/**/*.[jt]s?(x)", "**/?(*.)+(spec|test).[tj]s?(x)"],
+    "moduleFileExtensions": ["ts", "tsx", "js", "jsx", "json", "node"],
+    "transform": {
+      "^.+\\.(ts|tsx)$": "ts-jest"
+    },
+    "transformIgnorePatterns": [
+      "node_modules/(?!(react-native|@react-native)/)"
+    ],
+    "moduleNameMapper": {
+      "^react-native$": "react-native"
+    },
+    "setupFilesAfterEnv": ["<rootDir>/src/setup.ts"],
+    "collectCoverageFrom": [
+      "src/**/*.{ts,tsx}",
+      "!src/**/*.d.ts",
+      "!src/**/types.ts"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 80,
+        "functions": 80,
+        "lines": 80,
+        "statements": 80
+      }
+    }
+  }
+}

@@ -1,0 +1,176 @@
+apply plugin: "com.android.application"
+apply plugin: "org.jetbrains.kotlin.android"
+apply plugin: "com.facebook.react"
+apply plugin: "jacoco"
+apply plugin: "kotlin-parcelize"
+
+def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
+
+react {
+  entryFile = file(["node", "-e", "require('expo/scripts/resolveAppEntry')", projectRoot, "android", "absolute"].execute(null, rootDir).text.trim())
+  reactNativeDir = new File(["node", "--print", "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim()).getParentFile().getAbsoluteFile()
+  hermesCommand = new File(["node", "--print", "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim()).getParentFile().getAbsolutePath() + "/sdks/hermesc/%OS-BIN%/hermesc"
+  codegenDir = new File(["node", "--print", "require.resolve('@react-native/codegen/package.json', { paths: [require.resolve('react-native/package.json')] })"].execute(null, rootDir).text.trim()).getParentFile().getAbsoluteFile()
+  cliFile = new File(["node", "--print", "require.resolve('@expo/cli', { paths: [require.resolve('expo/package.json')] })"].execute(null, rootDir).text.trim())
+  bundleCommand = "export:embed"
+  autolinkLibrariesWithApp()
+}
+
+allprojects {
+  repositories {
+    google()
+    mavenCentral()
+    maven { url "https://jitpack.io" }
+  }
+}
+
+def enableProguardInReleaseBuilds = (findProperty('android.enableProguardInReleaseBuilds') ?: false).toBoolean()
+def jscFlavor = 'org.webkit:android-jsc:+'
+
+android {
+  ndkVersion rootProject.ext.ndkVersion
+  buildToolsVersion rootProject.ext.buildToolsVersion
+  compileSdk rootProject.ext.compileSdkVersion
+
+  namespace 'com.DemoAppExpo'
+  defaultConfig {
+    applicationId 'com.DemoAppExpo'
+    minSdkVersion rootProject.ext.minSdkVersion
+    targetSdkVersion rootProject.ext.targetSdkVersion
+    versionCode 1
+    versionName "1.0.0"
+
+    // 👇 Custom BuildConfig fields
+    buildConfigField "String", "APP_VERSION", "\"1.0.0\""
+    buildConfigField "String", "BASE_URL", "\"https://sandbox-api.example.com/\""
+  }
+  signingConfigs {
+    debug {
+      storeFile file('debug.keystore')
+      storePassword 'android'
+      keyAlias 'androiddebugkey'
+      keyPassword 'android'
+    }
+  }
+  buildTypes {
+    debug {
+      buildConfigField "String", "BASE_URL", "\"https://sandbox-api.example.com/\""
+      buildConfigField "boolean", "LOG_HTTP", "true"
+      signingConfig signingConfigs.debug
+    }
+    release {
+      signingConfig signingConfigs.debug
+      shrinkResources (findProperty('android.enableShrinkResourcesInReleaseBuilds')?.toBoolean() ?: false)
+      minifyEnabled enableProguardInReleaseBuilds
+      proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+      crunchPngs (findProperty('android.enablePngCrunchInReleaseBuilds')?.toBoolean() ?: true)
+      buildConfigField "String", "BASE_URL", "\"https://api.example.com/\""
+      buildConfigField "boolean", "LOG_HTTP", "false"
+    }
+  }
+  packagingOptions {
+    jniLibs {
+      useLegacyPackaging (findProperty('expo.useLegacyPackaging')?.toBoolean() ?: false)
+    }
+    pickFirst 'META-INF/versions/9/OSGI-INF/MANIFEST.MF'
+  }
+  androidResources {
+    ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
+  }
+
+  buildFeatures {
+    viewBinding true
+    compose true
+  }
+
+  composeOptions {
+    kotlinCompilerExtensionVersion '1.5.15'
+  }
+
+  kotlinOptions {
+    jvmTarget = "17"
+  }
+}
+
+dependencies {
+
+  testImplementation("junit:junit:4.13.2")
+  testImplementation("org.jetbrains.kotlin:kotlin-test:1.8.22")
+  testImplementation("org.jetbrains.kotlin:kotlin-test-junit:1.8.22")
+  testImplementation("org.mockito:mockito-core:5.10.0")
+  testImplementation("org.mockito.kotlin:mockito-kotlin:5.2.1")
+  testImplementation("io.mockk:mockk:1.13.11")
+  implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
+  implementation("com.squareup.retrofit2:retrofit:2.9.0")
+  implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+  implementation("com.squareup.okhttp3:okhttp:4.11.0")
+  implementation("com.squareup.okhttp3:logging-interceptor:4.11.0")
+
+  implementation("com.facebook.react:react-android")
+  implementation "androidx.compose.ui:ui:1.5.0"
+  implementation "androidx.compose.material:material:1.5.0"
+  implementation "androidx.compose.ui:ui-tooling-preview:1.5.0"
+  debugImplementation "androidx.compose.ui:ui-tooling:1.5.0"
+  androidTestImplementation "androidx.compose.ui:ui-test-junit4:1.5.0"
+  implementation "androidx.navigation:navigation-compose:2.5.3"
+  implementation "androidx.activity:activity-compose:1.6.1"
+
+  if (hermesEnabled.toBoolean()) {
+    implementation("com.facebook.react:hermes-android")
+  } else {
+    implementation jscFlavor
+  }
+
+  testImplementation "com.facebook.react:react-android:0.71.0"
+  testImplementation "junit:junit:4.13.2"
+  testImplementation "org.mockito:mockito-core:4.11.0"
+  testImplementation "org.mockito.kotlin:mockito-kotlin:4.1.0"
+  testImplementation "org.robolectric:robolectric:4.10.3"
+  testImplementation("io.mockk:mockk:1.13.11")
+}
+
+jacoco {
+  toolVersion = "0.8.11"
+}
+
+tasks.withType(Test).configureEach {
+  jacoco.includeNoLocationClasses = true
+  jacoco.excludes = ['jdk.internal.*']
+}
+
+task jacocoUnitTestReportDemo(type: JacocoReport, dependsOn: ['testDebugUnitTest']) {
+  group = "Reporting"
+  description = "Generates JaCoCo coverage report for Debug unit tests"
+
+  reports {
+    csv.required = false
+    xml.required = true
+    html.required = true
+    html.destination file("$buildDir/reports/jacoco/html")
+    xml.destination file("$buildDir/reports/jacoco/testReport.xml")
+  }
+
+  def fileFilter = [
+    '**/R.class',
+    '**/R$*.class',
+    '**/BuildConfig.*',
+    '**/Manifest*.*',
+    '**/*Test*.*',
+    'android/**/*.*'
+  ]
+
+  def kotlinDebugTree = fileTree(
+    dir: "$buildDir/tmp/kotlin-classes/debug",
+    excludes: fileFilter
+  )
+  def javaDebugTree = fileTree(
+    dir: "$buildDir/intermediates/javac/debug/classes",
+    excludes: fileFilter
+  )
+
+  sourceDirectories.from = files(["src/main/java", "src/main/kotlin"])
+  classDirectories.from = files([kotlinDebugTree, javaDebugTree])
+  executionData.from = fileTree(dir: buildDir, includes: [
+    "jacoco/testDebugUnitTest.exec"
+  ])
+}

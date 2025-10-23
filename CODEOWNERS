@@ -1,0 +1,5 @@
+CODEOWNERS @paysafe/consumer/dw-mobile/release-reviewers
+
+[Related to CI]
+bitrise.yml @paysafe/consumer/dw-mobile/release-reviewers
+.gitlab-ci.yml @paysafe/consumer/dw-mobile/release-reviewers

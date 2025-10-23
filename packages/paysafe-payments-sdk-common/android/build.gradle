@@ -1,0 +1,115 @@
+buildscript {
+  ext.getExtOrDefault = { name ->
+    return rootProject.ext.has(name) ? rootProject.ext.get(name) : project.properties['PaysafePaymentsSdkCommon_' + name]
+  }
+
+  repositories {
+    gradlePluginPortal()
+    google()
+    mavenCentral()
+    maven {
+      url("../../../node_modules/react-native/android")
+    }
+    maven {
+      url("https://www.jitpack.io")
+    }
+  }
+
+  dependencies {
+    classpath("com.android.tools.build:gradle:8.1.1")
+    classpath("com.facebook.react:react-native-gradle-plugin:0.71.0")
+    classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.8.22")
+    classpath("org.jetbrains.kotlin:kotlin-stdlib:1.8.22")
+    classpath("org.jacoco:org.jacoco.core:0.8.11")
+    classpath("org.jlleitschuh.gradle:ktlint-gradle:11.3.2")
+  }
+}
+
+def isNewArchitectureEnabled() {
+  return rootProject.hasProperty("newArchEnabled") && rootProject.getProperty("newArchEnabled") == "true"
+}
+
+apply plugin: "com.android.library"
+apply plugin: "kotlin-android"
+apply plugin: "org.jlleitschuh.gradle.ktlint"
+
+if (isNewArchitectureEnabled()) {
+  apply plugin: "com.facebook.react"
+}
+
+def getExtOrIntegerDefault(name) {
+  return rootProject.ext.has(name) ? rootProject.ext.get(name) : (project.properties["PaysafePaymentsSdkCommon_" + name]).toInteger()
+}
+
+def supportsNamespace() {
+  def parsed = com.android.Version.ANDROID_GRADLE_PLUGIN_VERSION.tokenize('.')
+  def major = parsed[0].toInteger()
+  def minor = parsed[1].toInteger()
+
+  return (major == 7 && minor >= 3) || major >= 8
+}
+
+android {
+  if (supportsNamespace()) {
+    namespace "com.paysafepaymentssdkcommon"
+
+    sourceSets {
+      main {
+        manifest.srcFile "src/main/AndroidManifest.xml"
+      }
+    }
+  }
+
+  compileSdkVersion getExtOrIntegerDefault("compileSdkVersion")
+
+  defaultConfig {
+    minSdkVersion getExtOrIntegerDefault("minSdkVersion")
+    targetSdkVersion getExtOrIntegerDefault("targetSdkVersion")
+  }
+
+  buildTypes {
+    release {
+      minifyEnabled false
+    }
+  }
+
+  lintOptions {
+    disable "GradleCompatible"
+  }
+
+  compileOptions {
+    sourceCompatibility JavaVersion.VERSION_17
+    targetCompatibility JavaVersion.VERSION_17
+  }
+
+  kotlinOptions {
+    jvmTarget = "17"
+  }
+}
+
+afterEvaluate {
+  if (tasks.findByName("generateCodegenArtifactsFromSchema") != null) {
+    tasks.named("runKtlintCheckOverMainSourceSet").configure {
+      dependsOn("generateCodegenArtifactsFromSchema")
+    }
+  }
+
+  if (tasks.findByName("jacocoUnitTestReport") != null) {
+    tasks.jacocoUnitTestReport.dependsOn processDebugManifest
+    tasks.jacocoUnitTestReport.dependsOn compileDebugLibraryResources
+  }
+}
+
+dependencies {
+  implementation("com.facebook.react:react-android:0.71.0")
+  implementation("org.jetbrains.kotlin:kotlin-stdlib:1.8.22")
+  implementation("com.github.paysafegroup.paysafe_sdk_android_payments_api:paysafe-core:0.0.44")
+
+  testImplementation("junit:junit:4.13.2")
+  testImplementation("org.jetbrains.kotlin:kotlin-test:1.8.22")
+  testImplementation("org.jetbrains.kotlin:kotlin-test-junit:1.8.22")
+  testImplementation("org.mockito:mockito-core:5.10.0")
+  testImplementation("org.mockito.kotlin:mockito-kotlin:5.2.1")
+  testImplementation("io.mockk:mockk:1.13.11")
+  testImplementation("org.robolectric:robolectric:4.14.1")
+}

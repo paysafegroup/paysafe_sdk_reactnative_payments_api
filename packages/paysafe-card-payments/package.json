@@ -1,0 +1,39 @@
+{
+  "name": "@paysafe/paysafe-card-payments",
+  "version": "1.0.2",
+  "description": "card payments integration",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "author": " <> ()",
+  "license": "SEE LICENSE IN LICENSE",
+  "homepage": "#readme",
+  "create-react-native-library": {
+    "type": "legacy-module",
+    "languages": "kotlin-swift",
+    "version": "0.48.3"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-test-renderer": "^18.2.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  },
+  "scripts": {
+    "build": "tsc"
+  },
+  "files": [
+    "dist",
+    "android",
+    "ios"
+  ],
+  "react-native": {
+    "android": {
+      "sourceDir": "android"
+    },
+    "ios": {
+      "sourceDir": "ios"
+    }
+  }
+}

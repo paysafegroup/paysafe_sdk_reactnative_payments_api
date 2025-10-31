@@ -1,0 +1,50 @@
+buildscript {
+  ext {
+    buildToolsVersion = findProperty('android.buildToolsVersion') ?: '35.0.0'
+    minSdkVersion = Integer.parseInt(findProperty('android.minSdkVersion') ?: '24')
+    compileSdkVersion = Integer.parseInt(findProperty('android.compileSdkVersion') ?: '35')
+    targetSdkVersion = Integer.parseInt(findProperty('android.targetSdkVersion') ?: '34')
+    kotlinVersion = findProperty('android.kotlinVersion') ?: '1.9.25'
+    ndkVersion = "26.1.10909125"
+  }
+  repositories {
+    google()
+    mavenCentral()
+    maven { url 'https://www.jitpack.io' }
+    maven {
+      url new File(
+        ["node", "--print", "require.resolve('expo/package.json')"].execute(null, rootDir).text.trim(),
+        "../android/maven"
+      )
+    }
+  }
+  dependencies {
+    classpath("com.android.tools.build:gradle:7.4.2")
+    classpath("com.facebook.react:react-native-gradle-plugin:0.71.0")
+    classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.24")
+  }
+}
+
+apply plugin: "com.facebook.react.rootproject"
+apply plugin: 'kotlin'
+
+allprojects {
+  configurations.configureEach {
+    resolutionStrategy.eachDependency { details ->
+      if (details.requested.group == 'org.jetbrains.kotlinx' &&
+        details.requested.name.startsWith('kotlinx-coroutines')) {
+        details.useVersion '1.7.3'
+        details.because 'Prevent Kotlin 2.x metadata issues (force Kotlin 1.9.x compatible version)'
+      }
+
+      if (details.requested.group == 'org.jetbrains.kotlin') {
+        details.useVersion '1.9.25'
+        details.because 'Force Kotlin version to ensure compatibility with Compose 1.5.15'
+      }
+    }
+  }
+}
+
+dependencies {
+  implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.24"
+}

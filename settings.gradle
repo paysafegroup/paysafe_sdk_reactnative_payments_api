@@ -1,0 +1,66 @@
+pluginManagement {
+  repositories {
+    gradlePluginPortal()
+    google()
+    mavenCentral()
+    maven {
+      url("node_modules/@react-native/android")
+    }
+    maven {
+      url("https://www.jitpack.io")
+    }
+  }
+}
+
+dependencyResolutionManagement {
+  versionCatalogs {
+    libs {
+      from(files("libs.versions.toml"))
+    }
+  }
+  repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+  repositories {
+    gradlePluginPortal()
+    google()
+    mavenCentral()
+    maven {
+      url("node_modules/react-native/android")
+    }
+    maven {
+      url("https://www.jitpack.io")
+    }
+  }
+}
+
+gradle.projectsLoaded {
+  gradle.rootProject {
+    it.subprojects { subproject ->
+      subproject.afterEvaluate {
+        if (subproject.plugins.hasPlugin("com.android.library")) {
+          def jacocoFile = file("${rootDir}/jacoco.gradle")
+          if (jacocoFile.exists()) {
+            subproject.apply from: jacocoFile
+            println "Applied Jacoco to ${subproject.name}"
+          }
+        }
+      }
+    }
+  }
+}
+
+rootProject.name = 'paysafe-ph-mobile-sdk-react-native'
+
+include ':demo:demo-app'
+include ':DemoAppExpo'
+include ':packages:paysafe-payments-sdk-common'
+include ':packages:paysafe-venmo'
+include ':packages:paysafe-google-pay'
+include ':packages:paysafe-card-payments'
+
+project(':packages:paysafe-payments-sdk-common').projectDir = new File(rootDir, 'packages/paysafe-payments-sdk-common/android')
+project(':packages:paysafe-venmo').projectDir = new File(rootDir, 'packages/paysafe-venmo/android')
+project(':packages:paysafe-google-pay').projectDir = new File(rootDir, 'packages/paysafe-google-pay/android')
+project(':packages:paysafe-card-payments').projectDir = new File(rootDir, 'packages/paysafe-card-payments/android')
+project(':demo:demo-app').projectDir = new File(rootDir, 'demo/demo-app/android')
+project(':DemoAppExpo').projectDir = new File(rootDir, 'DemoAppExpo/android')
+includeBuild('node_modules/@react-native/gradle-plugin')

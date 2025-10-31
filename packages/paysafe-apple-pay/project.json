@@ -1,0 +1,17 @@
+{
+  "name": "paysafe-apple-pay",
+  "root": "packages/paysafe-apple-pay",
+  "sourceRoot": "packages/paysafe-apple-pay/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/paysafe-apple-pay",
+        "tsConfig": "packages/paysafe-apple-pay/tsconfig.lib.json",
+        "main": "packages/paysafe-apple-pay/src/index.tsx"
+      }
+    }
+  }
+}

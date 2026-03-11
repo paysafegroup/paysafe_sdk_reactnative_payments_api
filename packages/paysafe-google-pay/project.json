@@ -1,0 +1,17 @@
+{
+  "name": "paysafe-google-pay",
+  "root": "packages/paysafe-google-pay",
+  "sourceRoot": "packages/paysafe-google-pay/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/paysafe-google-pay",
+        "tsConfig": "packages/paysafe-google-pay/tsconfig.lib.json",
+        "main": "packages/paysafe-google-pay/src/index.tsx"
+      }
+    }
+  }
+}

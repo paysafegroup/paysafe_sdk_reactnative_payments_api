@@ -1,0 +1,55 @@
+[versions]
+reactNative = "0.71.0"
+kotlin = "1.8.22"
+hermes = "0.13.0"
+gradle = "8.1.1"
+reactNativeGradle = "0.71.0"
+junit = "4.13.2"
+jacoco = "0.8.11"
+ktlint = "11.3.2"
+mockito-core = "5.10.0"
+mockito-kotlin = "5.2.1"
+native-payments-sdk = "0.0.44"
+mockk-io = "1.13.11"
+andoirdx-core = "1.6.1"
+robolectric = "4.14.1"
+andoirdx-runner = "1.6.2"
+androidx-junit = "1.2.1"
+kotlinx-coroutines = "1.9.0"
+compose = "1.7.8"
+
+[libraries]
+reactNative = { group = "com.facebook.react", name = "react-android", version.ref = "reactNative" }
+hermesAndroid = { group = "com.facebook.react", name = "hermes-android", version.ref = "hermes" }
+androidGradlePlugin = { group = "com.android.tools.build", name = "gradle", version.ref = "gradle" }
+kotlinGradlePlugin = { group = "org.jetbrains.kotlin", name = "kotlin-gradle-plugin", version.ref = "kotlin" }
+reactNativeGradlePlugin = { group = "com.facebook.react", name = "react-native-gradle-plugin", version.ref = "reactNativeGradle" }
+junit = { group = "junit", name = "junit", version.ref = "junit" }
+kotlinTest = { group = "org.jetbrains.kotlin", name = "kotlin-test", version.ref = "kotlin" }
+kotlinTestJunit = { group = "org.jetbrains.kotlin", name = "kotlin-test-junit", version.ref = "kotlin" }
+jacoco = { group = "org.jacoco", name = "org.jacoco.core", version.ref = "jacoco" }
+ktlint = { group = "org.jlleitschuh.gradle", name = "ktlint-gradle", version.ref = "ktlint"}
+kotlinStdlib = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib", version.ref = "kotlin"}
+mockito-core = { group = "org.mockito", name = "mockito-core", version.ref = "mockito-core"}
+mockito-kotlin = { group = "org.mockito.kotlin", name = "mockito-kotlin", version.ref = "mockito-kotlin"}
+mockk-io = { group = "io.mockk", name = "mockk", version.ref = "mockk-io"}
+andoirdx-core = { group = "androidx.test", name = "core", version.ref = "andoirdx-core"}
+robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric"}
+andoirdx-runner = { group = "androidx.test", name = "runner", version.ref = "andoirdx-runner"}
+androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidx-junit"}
+kotlinx-coroutines = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinx-coroutines"}
+compose-runtime = { group = "androidx.compose.runtime", name = "runtime", version.ref = "compose"}
+compose-ui = { group = "androidx.compose.ui", name = "ui", version.ref = "compose"}
+compose-material = { group = "androidx.compose.material", name = "material", version.ref = "compose"}
+
+paysafe-core = { group = "com.github.paysafegroup.paysafe_sdk_android_payments_api", name = "paysafe-core", version.ref = "native-payments-sdk" }
+paysafe-venmo = { group = "com.github.paysafegroup.paysafe_sdk_android_payments_api", name = "venmo", version.ref = "native-payments-sdk"}
+paysafe-google-pay = { group = "com.github.paysafegroup.paysafe_sdk_android_payments_api", name = "google-pay", version.ref = "native-payments-sdk"}
+paysafe-card-payments = { group = "com.github.paysafegroup.paysafe_sdk_android_payments_api", name = "card-payments", version.ref = "native-payments-sdk"}
+
+[plugins]
+ktlint = { id = "org.jlleitschuh.gradle.ktlint" }
+android-library = { id = "com.android.library" }
+kotlin-android = { id = "org.jetbrains.kotlin.android" }
+android-application = { id = "com.android.application" }
+fb-react = { id = "com.facebook.react" }

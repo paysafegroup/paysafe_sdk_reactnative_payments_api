@@ -1,0 +1,48 @@
+{
+  "name": "@paysafe/paysafe-venmo",
+  "version": "1.2.0",
+  "description": "venmo integration",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "author": "Paysafe",
+  "homepage": "https://github.com/paysafe/paysafe-sdk",
+  "license": "SEE LICENSE IN LICENSE",
+  "create-react-native-library": {
+    "type": "legacy-module",
+    "languages": "kotlin-swift",
+    "version": "0.48.2"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-native": ">=0.72.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.2",
+    "react-test-renderer": "18.3.1"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": false
+    },
+    "react-native": {
+      "optional": false
+    }
+  },
+  "scripts": {
+    "build": "tsc"
+  },
+  "files": [
+    "dist",
+    "src",
+    "android",
+    "ios"
+  ],
+  "react-native": {
+    "android": {
+      "sourceDir": "android"
+    },
+    "ios": {
+      "sourceDir": "ios"
+    }
+  }
+}

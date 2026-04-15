@@ -1,0 +1,53 @@
+{
+  "name": "@paysafe/paysafe-payments-sdk-common",
+  "version": "1.0.0",
+  "description": "Package containing logic shared between different parts of the payments SDK.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "author": "Paysafe",
+  "homepage": "https://github.com/paysafe/paysafe-sdk",
+  "license": "SEE LICENSE IN LICENSE",
+  "publishConfig": {
+    "access": "public"
+  },
+  "create-react-native-library": {
+    "type": "legacy-module",
+    "languages": "kotlin-swift",
+    "version": "0.47.0"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-native": ">=0.72.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": false
+    },
+    "react-native": {
+      "optional": false
+    }
+  },
+  "devDependencies": {
+    "@types/react": "~18.3.12",
+    "typescript": "^5.6.2"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.lib.json",
+    "prepublishOnly": "npm run build"
+  },
+  "files": [
+    "dist",
+    "src",
+    "android",
+    "ios",
+    "paysafe-payments-sdk-common.podspec"
+  ],
+  "react-native": {
+    "android": {
+      "sourceDir": "android"
+    },
+    "ios": {
+      "sourceDir": "ios"
+    }
+  }
+}

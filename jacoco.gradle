@@ -1,0 +1,50 @@
+apply plugin: 'jacoco'
+jacoco {
+  toolVersion = "0.8.8"
+}
+tasks.withType(Test) {
+  jacoco.includeNoLocationClasses = true
+  jacoco.excludes = ['jdk.internal.*']
+}
+if (project.plugins.hasPlugin("com.android.library")) {
+  android {
+    testOptions {
+      unitTests.all {
+        jacoco {
+          enabled true
+          destinationFile = file("$buildDir/jacoco/testDebugUnitTest.exec")
+        }
+      }
+    }
+  }
+} else {
+  println "Skipping JaCoCo configuration for application: ${project.name}"
+}
+task jacocoUnitTestReport(type: JacocoReport, dependsOn: ['testDebugUnitTest']) {
+  reports {
+    csv.required = false
+    xml.required = true
+    html.required = true
+    html.destination file("$buildDir/reports/jacoco/html")
+    xml.destination file("$buildDir/reports/jacoco/testReport.xml")
+  }
+  def fileFilter = ['**/*Dagger.*']
+  def kotlinDebugTree = fileTree(dir: "$buildDir/tmp/kotlin-classes/debug", excludes: fileFilter)
+  def mainSrc = "$projectDir/src/main/java"
+  sourceDirectories.from = files([mainSrc])
+  classDirectories.from = files([kotlinDebugTree])
+  executionData.from = fileTree(dir: "$buildDir", includes: ["**/*.exec"])
+}
+task openJacocoReport(dependsOn: jacocoUnitTestReport) {
+  doLast {
+    def htmlReportFile = file("$buildDir/reports/jacoco/html/index.html")
+    if (htmlReportFile.exists()) {
+      println "Opening JaCoCo HTML report: ${htmlReportFile.absolutePath}"
+      exec {
+        commandLine 'open', htmlReportFile.absolutePath
+      }
+    } else {
+      println "JaCoCo HTML report not found: ${htmlReportFile.absolutePath}"
+    }
+  }
+}

@@ -1,0 +1,88 @@
+pluginManagement {
+  repositories {
+    gradlePluginPortal()
+    google()
+    mavenCentral()
+    maven {
+      url("node_modules/@react-native/android")
+    }
+    maven {
+      url("https://www.jitpack.io")
+    }
+  }
+}
+
+dependencyResolutionManagement {
+  versionCatalogs {
+    libs {
+      from(files("libs.versions.toml"))
+    }
+  }
+  repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+  repositories {
+    gradlePluginPortal()
+    google()
+    mavenCentral()
+    maven {
+      url("node_modules/react-native/android")
+    }
+    maven {
+      url("https://www.jitpack.io")
+    }
+  }
+}
+
+def readMonorepoReactNativeVersion = {
+  def packageJson = new File(settingsDir, "node_modules/react-native/package.json")
+  if (!packageJson.exists()) {
+    return "0.76.9"
+  }
+  def parsed = new groovy.json.JsonSlurper().parse(packageJson)
+  return parsed.version as String
+}
+
+gradle.projectsLoaded {
+  def monorepoReactNativeVersion = readMonorepoReactNativeVersion()
+
+  gradle.rootProject {
+    it.subprojects { subproject ->
+      subproject.configurations.configureEach { configuration ->
+        configuration.resolutionStrategy.eachDependency { details ->
+          if (details.requested.group == "com.facebook.react"
+            && details.requested.name == "react-android") {
+            details.useVersion(monorepoReactNativeVersion)
+            details.because(
+              "Monorepo pins react-android to react-native ${monorepoReactNativeVersion} " +
+                "(react-android:+ otherwise resolves to Maven 0.88+ and breaks Kotlin 2.0.x CI)"
+            )
+          }
+        }
+      }
+
+      subproject.afterEvaluate {
+        if (subproject.plugins.hasPlugin("com.android.library")) {
+          def jacocoFile = file("${rootDir}/jacoco.gradle")
+          if (jacocoFile.exists()) {
+            subproject.apply from: jacocoFile
+            println "Applied Jacoco to ${subproject.name}"
+          }
+        }
+      }
+    }
+  }
+}
+
+rootProject.name = 'paysafe-ph-mobile-sdk-react-native'
+
+include ':DemoAppExpo'
+include ':packages:paysafe-payments-sdk-common'
+include ':packages:paysafe-venmo'
+include ':packages:paysafe-google-pay'
+include ':packages:paysafe-card-payments'
+
+project(':packages:paysafe-payments-sdk-common').projectDir = new File(rootDir, 'packages/paysafe-payments-sdk-common/android')
+project(':packages:paysafe-venmo').projectDir = new File(rootDir, 'packages/paysafe-venmo/android')
+project(':packages:paysafe-google-pay').projectDir = new File(rootDir, 'packages/paysafe-google-pay/android')
+project(':packages:paysafe-card-payments').projectDir = new File(rootDir, 'packages/paysafe-card-payments/android')
+project(':DemoAppExpo').projectDir = new File(rootDir, 'DemoAppExpo/android')
+includeBuild('node_modules/@react-native/gradle-plugin')

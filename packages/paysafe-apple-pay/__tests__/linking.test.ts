@@ -1,0 +1,116 @@
+import { Platform } from 'react-native';
+
+const REACT_NATIVE = 'react-native';
+
+const LINKING_ERROR = new Error(
+  "The package '@paysafe/react-native-paysafe-apple-pay' doesn't seem to be linked."
+);
+
+const unlinkedTurboModule = {
+  initializeContext: jest.fn(() => Promise.reject(LINKING_ERROR)),
+  resetContext: jest.fn(() => Promise.reject(LINKING_ERROR)),
+  tokenize: jest.fn(() => Promise.reject(LINKING_ERROR)),
+  isApplePayAvailable: jest.fn(() => Promise.reject(LINKING_ERROR)),
+};
+
+jest.mock('react-native', () => ({
+  TurboModuleRegistry: {
+    get: jest.fn(() => unlinkedTurboModule),
+  },
+  Platform: {
+    OS: 'ios',
+    select: jest.fn(({ ios }) => ios),
+  },
+}));
+
+describe('module linking', () => {
+  beforeEach(() => {
+    jest.resetModules();
+  });
+
+  it('should return error result when native module is not available (tokenize)', async () => {
+    jest.doMock(REACT_NATIVE, () => ({
+      TurboModuleRegistry: {
+        get: jest.fn(() => unlinkedTurboModule),
+      },
+      Platform: { OS: 'ios', select: jest.fn(({ ios }) => ios) },
+    }));
+
+    const { tokenize } = await import('../src/index');
+    const validOptions = {
+      amount: 100,
+      currencyCode: 'USD',
+      transactionType: 'PAYMENT' as const,
+      merchantRefNum: 'ref',
+      accountId: '89999999',
+      profile: { firstName: 'A', lastName: 'B', email: 'a@b.com' },
+      psApplePay: { label: 'Total' },
+    };
+
+    const result = await tokenize(validOptions);
+    expect(result.isSuccess).toBe(false);
+    expect(result.error?.message).toContain("doesn't seem to be linked");
+  });
+
+  it('should return false availability when not linked', async () => {
+    jest.doMock(REACT_NATIVE, () => ({
+      TurboModuleRegistry: {
+        get: jest.fn(() => unlinkedTurboModule),
+      },
+      Platform: { OS: 'ios', select: jest.fn(({ ios }) => ios) },
+    }));
+
+    const { isApplePayAvailable } = await import('../src/index');
+    const result = await isApplePayAvailable();
+    expect(result.isAvailable).toBe(false);
+    expect(console.info).toHaveBeenCalledWith(
+      'Failed to check Apple Pay availability:',
+      expect.objectContaining({ message: expect.stringContaining("doesn't seem to be linked") })
+    );
+  });
+
+  it('should throw linking error for initializeApplePayContext when not linked', async () => {
+    jest.doMock(REACT_NATIVE, () => ({
+      TurboModuleRegistry: {
+        get: jest.fn(() => unlinkedTurboModule),
+      },
+      Platform: { OS: 'ios', select: jest.fn(({ ios }) => ios) },
+    }));
+
+    const { initializeApplePayContext } = await import('../src/index');
+
+    await expect(
+      initializeApplePayContext({
+        currencyCode: 'USD',
+        accountId: '89999999',
+        merchantIdentifier: 'merchant.com.example.app',
+        countryCode: 'US',
+      })
+    ).rejects.toThrow(/doesn't seem to be linked/);
+  });
+
+  it('should throw android platform error before linking (tokenize)', async () => {
+    jest.doMock(REACT_NATIVE, () => ({
+      TurboModuleRegistry: {
+        get: jest.fn(() => unlinkedTurboModule),
+      },
+      Platform: {
+        OS: 'android',
+        select: jest.fn(({ ios, default: d }) => d || ''),
+      },
+    }));
+
+    const { tokenize } = await import('../src/index');
+    const validOptions = {
+      amount: 100,
+      currencyCode: 'USD',
+      transactionType: 'PAYMENT' as const,
+      merchantRefNum: 'ref',
+      accountId: '89999999',
+      profile: { firstName: 'A', lastName: 'B', email: 'a@b.com' },
+      psApplePay: { label: 'Total' },
+    };
+
+    await expect(tokenize(validOptions)).rejects.toThrow('Apple Pay is only available on iOS devices');
+  });
+});

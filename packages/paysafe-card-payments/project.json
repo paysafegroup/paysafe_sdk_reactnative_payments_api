@@ -1,0 +1,17 @@
+{
+  "name": "paysafe-card-payments",
+  "root": "packages/paysafe-card-payments",
+  "sourceRoot": "packages/paysafe-card-payments/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/paysafe-card-payments",
+        "tsConfig": "packages/paysafe-card-payments/tsconfig.lib.json",
+        "main": "packages/paysafe-card-payments/src/index.tsx"
+      }
+    }
+  }
+}

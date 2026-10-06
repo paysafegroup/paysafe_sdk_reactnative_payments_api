@@ -1,0 +1,17 @@
+{
+  "name": "paysafe-venmo",
+  "root": "packages/paysafe-venmo",
+  "sourceRoot": "packages/paysafe-venmo/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/paysafe-venmo",
+        "tsConfig": "packages/paysafe-venmo/tsconfig.lib.json",
+        "main": "packages/paysafe-venmo/src/index.tsx"
+      }
+    }
+  }
+}

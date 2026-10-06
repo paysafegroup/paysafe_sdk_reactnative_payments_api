@@ -1,0 +1,399 @@
+// Copyright Paysafe 2025. All rights reserved.
+
+package com.paysafegooglepay
+
+import com.facebook.react.bridge.ReadableArray
+import com.facebook.react.bridge.ReadableMap
+import com.paysafe.android.google_pay.domain.model.PSGooglePayTokenizeOptions
+import com.paysafe.android.tokenization.domain.model.paymentHandle.BillingDetails
+import com.paysafe.android.tokenization.domain.model.paymentHandle.MerchantDescriptor
+import com.paysafe.android.tokenization.domain.model.paymentHandle.ShippingDetails
+import com.paysafe.android.tokenization.domain.model.paymentHandle.ShippingMethod
+import com.paysafe.android.tokenization.domain.model.paymentHandle.SimulatorType
+import com.paysafe.android.tokenization.domain.model.paymentHandle.ThreeDSProfile
+import com.paysafe.android.tokenization.domain.model.paymentHandle.TransactionType
+import com.paysafe.android.tokenization.domain.model.paymentHandle.UserAccountDetails
+import com.paysafe.android.tokenization.domain.model.paymentHandle.detail.AuthenticationMethod
+import com.paysafe.android.tokenization.domain.model.paymentHandle.detail.ChangedRange
+import com.paysafe.android.tokenization.domain.model.paymentHandle.detail.CreatedRange
+import com.paysafe.android.tokenization.domain.model.paymentHandle.detail.InitialUsageRange
+import com.paysafe.android.tokenization.domain.model.paymentHandle.detail.PasswordChangeRange
+import com.paysafe.android.tokenization.domain.model.paymentHandle.detail.PaymentAccountDetails
+import com.paysafe.android.tokenization.domain.model.paymentHandle.detail.PriorThreeDSAuthentication
+import com.paysafe.android.tokenization.domain.model.paymentHandle.detail.ShippingDetailsUsage
+import com.paysafe.android.tokenization.domain.model.paymentHandle.detail.ThreeDSAuthentication
+import com.paysafe.android.tokenization.domain.model.paymentHandle.detail.TravelDetails
+import com.paysafe.android.tokenization.domain.model.paymentHandle.detail.UserLogin
+import com.paysafe.android.tokenization.domain.model.paymentHandle.profile.DateOfBirth
+import com.paysafe.android.tokenization.domain.model.paymentHandle.profile.Gender
+import com.paysafe.android.tokenization.domain.model.paymentHandle.profile.IdentityDocument
+import com.paysafe.android.tokenization.domain.model.paymentHandle.profile.Profile
+import com.paysafe.android.tokenization.domain.model.paymentHandle.profile.ProfileLocale
+import com.paysafe.android.tokenization.domain.model.paymentHandle.threeds.AuthenticationPurpose
+import com.paysafe.android.tokenization.domain.model.paymentHandle.threeds.BillingCycle
+import com.paysafe.android.tokenization.domain.model.paymentHandle.threeds.ElectronicDelivery
+import com.paysafe.android.tokenization.domain.model.paymentHandle.threeds.MessageCategory
+import com.paysafe.android.tokenization.domain.model.paymentHandle.threeds.OrderItemDetails
+import com.paysafe.android.tokenization.domain.model.paymentHandle.threeds.PurchasedGiftCardDetails
+import com.paysafe.android.tokenization.domain.model.paymentHandle.threeds.RequestorChallengePreference
+import com.paysafe.android.tokenization.domain.model.paymentHandle.threeds.ThreeDS
+import com.paysafe.android.tokenization.domain.model.paymentHandle.threeds.TransactionIntent
+
+class PSGooglePayTokenizeOptionsParser {
+
+  fun fromReadableMap(readableGooglePayTokenizeOptions: ReadableMap): PSGooglePayTokenizeOptions {
+    val amount = readableGooglePayTokenizeOptions.getInt(AMOUNT)
+    val currencyCode = readableGooglePayTokenizeOptions.getRequiredString(CURRENCY_CODE)
+    val transactionType = enumValueOrDefault(
+      readableGooglePayTokenizeOptions.getString(TRANSACTION_TYPE),
+      TransactionType.PAYMENT
+    )
+    val merchantRefNum = readableGooglePayTokenizeOptions.getRequiredString(MERCHANT_REF_NUM)
+    val accountId = readableGooglePayTokenizeOptions.getRequiredString(ACCOUNT_ID)
+
+    val billingDetails = buildBillingDetails(
+      readableGooglePayTokenizeOptions.getMap(BILLING_DETAILS)
+    )
+
+    val profile = buildProfile(readableGooglePayTokenizeOptions.getMap(PROFILE))
+
+    val merchantDescriptor = readableGooglePayTokenizeOptions.getMap(MERCHANT_DESCRIPTOR)
+      ?.let { map ->
+        MerchantDescriptor(
+          dynamicDescriptor = map.getRequiredString(DYNAMIC_DESCRIPTOR),
+          phone = map.getString(PHONE)
+        )
+      }
+
+    val shippingDetails = buildShippingDetails(
+      readableGooglePayTokenizeOptions.getMap(SHIPPING_DETAILS)
+    )
+
+    val simulator = enumValueOrDefault(
+      readableGooglePayTokenizeOptions.getString(SIMULATOR),
+      SimulatorType.EXTERNAL
+    )
+
+    val threeDS = buildThreeDsMap(
+      readableGooglePayTokenizeOptions.getMap(THREE_DS)
+    )
+
+    return PSGooglePayTokenizeOptions(
+      amount = amount,
+      currencyCode = currencyCode,
+      transactionType = transactionType,
+      merchantRefNum = merchantRefNum,
+      accountId = accountId,
+      billingDetails = billingDetails,
+      profile = profile,
+      merchantDescriptor = merchantDescriptor,
+      shippingDetails = shippingDetails,
+      simulator = simulator,
+      threeDS = threeDS
+    )
+  }
+
+  private fun buildThreeDsMap(map: ReadableMap?) =
+    map?.let {
+      ThreeDS(
+        merchantUrl = map.getRequiredString(MERCHANT_URL),
+        useThreeDSecureVersion2 = map.getNullableBoolean("useThreeDSecureVersion2"),
+        authenticationPurpose = map.getEnumOrDefault(
+          AUTHENTICATION_PURPOSE,
+          AuthenticationPurpose.PAYMENT_TRANSACTION
+        ),
+        process = map.getNullableBoolean("process"),
+        maxAuthorizationsForInstalmentPayment = map.getNullableInt("maxAuthorizationsForInstalmentPayment"),
+        billingCycle = map.getMap(BILLING_CYCLE)?.let { buildBillingCycle(it) },
+        electronicDelivery = map.getMap(ELECTRONIC_DELIVERY)?.let { buildElectronicDelivery(it) },
+        threeDSProfile = map.getMap(THREE_DS_PROFILE)?.let { buildThreeDSProfile(it) },
+        messageCategory = map.getEnumOrDefault(MESSAGE_CATEGORY, MessageCategory.PAYMENT),
+        requestorChallengePreference = map.getNullableEnum<RequestorChallengePreference>(
+          REQUESTOR_CHALLENGE
+        ),
+        userLogin = map.getMap(USER_LOGIN)?.let { buildUserLogin(it) },
+        transactionIntent = map.getEnumOrDefault(
+          TRANSACTION_INTENT,
+          TransactionIntent.GOODS_OR_SERVICE_PURCHASE
+        ),
+        initialPurchaseTime = map.getString("initialPurchaseTime"),
+        orderItemDetails = map.getMap(ORDER_ITEM_DETAILS)?.let { buildOrderItemDetails(it) },
+        purchasedGiftCardDetails = map.getMap(PURCHASE_GIST_CARD_DETAILS)
+          ?.let { buildPurchasedGiftCardDetails(it) },
+        userAccountDetails = map.getMap(USER_ACCOUNT_DETAILS)?.let { buildUserAccountDetails(it) },
+        priorThreeDSAuthentication = map.getMap(PRIOR_THREE_DS_AUTHENTICATION)
+          ?.let { buildPriorThreeDSAuthentication(it) },
+        shippingDetailsUsage = map.getMap(SHIPPING_DETAILS_USAGE)
+          ?.let { buildShippingDetailsUsage(it) },
+        suspiciousAccountActivity = map.getNullableBoolean(SUSPICIOUS_ACCOUNT_ACTIVITY),
+        totalPurchasesSixMonthCount = map.getNullableInt(TOTAL_PURCHASES),
+        transactionCountForPreviousDay = map.getNullableInt(TRANSACTION_COUNT),
+        transactionCountForPreviousYear = map.getNullableInt(TRANSACTION_COUNT_FOR_YEAR),
+        travelDetails = map.getMap(TRAVEL_DETAILS)?.let { buildTravelDetails(it) }
+      )
+    }
+
+  private fun buildShippingDetails(map: ReadableMap?): ShippingDetails? =
+    map?.let { map ->
+      ShippingDetails(
+        shipMethod = map.getString(SHIP_METHOD)
+          ?.let { shipMethod -> ShippingMethod.valueOf(shipMethod) },
+        street = map.getString(STREET),
+        street2 = map.getString(STREET_2),
+        city = map.getString(CITY),
+        state = map.getString(STATE),
+        countryCode = map.getString(COUNTRY_CODE),
+        zip = map.getString(ZIP)
+      )
+    }
+
+  private fun buildBillingDetails(map: ReadableMap?): BillingDetails? =
+    map?.let { map ->
+      BillingDetails(
+        country = map.getRequiredString(COUNTRY),
+        zip = map.getRequiredString(ZIP),
+        state = map.getString(STATE),
+        city = map.getString(CITY),
+        street = map.getString(STREET),
+        street1 = map.getString(STREET_1),
+        street2 = map.getString(STREET_2),
+        phone = map.getString(PHONE),
+        nickName = map.getString(NICK_NAME)
+      )
+    }
+
+  private fun buildProfile(map: ReadableMap?): Profile? =
+    map?.let { map ->
+      Profile(
+        firstName = map.getString(FIRST_NAME),
+        lastName = map.getString(LAST_NAME),
+        locale = map.getString(LOCALE)?.let { locale -> ProfileLocale.valueOf(locale) },
+        merchantCustomerId = map.getString(MERCHANT_CUSTOMER_ID),
+        dateOfBirth = buildDateOfBirth(
+          map.getMap(
+            DATE_OF_BIRTH
+          )
+        ),
+        email = map.getString(EMAIL),
+        phone = map.getString(PHONE),
+        mobile = map.getString(MOBILE),
+        gender = map.getString(GENDER)?.let { gender -> Gender.valueOf(gender) },
+        nationality = map.getString(NATIONALITY),
+        identityDocuments = buildIdentityDocuments(map.getArray(IDENTITY_DOCUMENTS))
+      )
+    }
+
+  private fun buildIdentityDocuments(array: ReadableArray?): List<IdentityDocument>? =
+    array?.toArrayList()
+      ?.filterIsInstance<Map<*, *>>()
+      ?.mapNotNull { (it["documentNumber"] as? String)?.let(::IdentityDocument) }
+
+  private fun buildDateOfBirth(map: ReadableMap?): DateOfBirth? =
+    map?.let {
+      DateOfBirth(
+        day = it.getNullableInt(DAY),
+        month = it.getNullableInt(MONTH),
+        year = it.getNullableInt(YEAR)
+      )
+    }
+
+  private fun buildBillingCycle(map: ReadableMap): BillingCycle = BillingCycle(
+    endDate = map.getString(END_DATE),
+    frequency = map.getNullableInt(FREQUENCY)
+  )
+
+  private fun buildElectronicDelivery(map: ReadableMap): ElectronicDelivery = ElectronicDelivery(
+    isElectronicDelivery = map.getBoolean(IS_ELECTRONIC_DELIVERY),
+    email = map.getString(EMAIL) ?: throw IllegalArgumentException("email is required")
+  )
+
+  private fun buildThreeDSProfile(map: ReadableMap): ThreeDSProfile = ThreeDSProfile(
+    email = map.getString(EMAIL),
+    phone = map.getString(PHONE),
+    cellPhone = map.getString(CELL_PHONE)
+  )
+
+  private fun buildUserLogin(map: ReadableMap): UserLogin = UserLogin(
+    data = map.getString(DATA),
+    authenticationMethod = map.getNullableEnum<AuthenticationMethod>(
+      AUTHENTICATION_METHOD
+    ),
+    time = map.getString(TIME)
+  )
+
+  private fun buildOrderItemDetails(map: ReadableMap): OrderItemDetails = OrderItemDetails(
+    preOrderItemAvailabilityDate = map.getString(PRE_ORDER_ITEM_AVAILABILITY_DATE),
+    preOrderPurchaseIndicator = map.getString(PRE_ORDER_PURCHASE_INDICATOR),
+    reorderItemsIndicator = map.getString(REORDER_ITEMS_INDICATOR),
+    shippingIndicator = map.getString(SHIPPING_INDICATOR)
+  )
+
+  private fun buildPurchasedGiftCardDetails(map: ReadableMap): PurchasedGiftCardDetails =
+    PurchasedGiftCardDetails(
+      amount = map.getNullableInt(AMOUNT),
+      count = map.getNullableInt(COUNT),
+      currency = map.getString(CURRENCY)
+    )
+
+  private fun buildUserAccountDetails(map: ReadableMap?): UserAccountDetails? =
+    map?.let {
+      UserAccountDetails(
+        createdDate = map.getString(CREATED_DATE),
+        createdRange = map.getNullableEnum<CreatedRange>(CREATED_RANGE),
+        changedDate = map.getString(CHANGED_DATE),
+        changedRange = map.getNullableEnum<ChangedRange>(CREATED_RANGE),
+        passwordChangedDate = map.getString(PASSWORD_CHANGED_DATE),
+        passwordChangedRange = map.getNullableEnum<PasswordChangeRange>(PASSWORD_CHANGED_RANGE),
+        totalPurchasesSixMonthCount = map.getNullableInt(TOTAL_PURCHASES),
+        transactionCountForPreviousDay = map.getNullableInt(TRANSACTION_COUNT),
+        transactionCountForPreviousYear = map.getNullableInt(TRANSACTION_COUNT_FOR_YEAR),
+        suspiciousAccountActivity = map.getNullableBoolean(SUSPICIOUS_ACCOUNT_ACTIVITY),
+        shippingDetailsUsage = map.getMap(SHIPPING_DETAILS_USAGE)
+          ?.let { buildShippingDetailsUsage(it) },
+        paymentAccountDetails = map.getMap(PAYMENT_ACCOUNT_DETAILS)
+          ?.let { buildPaymentAccountDetails(it) },
+        userLogin = map.getMap(USER_LOGIN)?.let { buildUserLogin(it) },
+        priorThreeDSAuthentication = map.getMap(PRIOR_THREE_DS_AUTHENTICATION)
+          ?.let { buildPriorThreeDSAuthentication(it) },
+        travelDetails = map.getMap(TRAVEL_DETAILS)?.let { buildTravelDetails(it) }
+      )
+    }
+
+  private fun buildShippingDetailsUsage(map: ReadableMap): ShippingDetailsUsage? =
+    ShippingDetailsUsage(
+      cardHolderNameMatch = map.getNullableBoolean(CARD_HOLDER_NAME_MATCH),
+      initialUsageDate = map.getString(INITIAL_USAGE_DATE),
+      initialUsageRange = map.getNullableEnum<InitialUsageRange>(INITIAL_USAGE_RANGE)
+    )
+
+  private fun buildPaymentAccountDetails(map: ReadableMap): PaymentAccountDetails =
+    PaymentAccountDetails(
+      createdDate = map.getString(CREATED_DATE),
+      createdRange = map.getNullableEnum<CreatedRange>(CREATED_RANGE)
+    )
+
+  private fun buildPriorThreeDSAuthentication(map: ReadableMap): PriorThreeDSAuthentication =
+    PriorThreeDSAuthentication(
+      data = map.getString(DATA),
+      method = map.getNullableEnum<ThreeDSAuthentication>(METHOD),
+      id = map.getString(ID),
+      time = map.getString(TIME)
+    )
+
+  private fun buildTravelDetails(map: ReadableMap): TravelDetails = TravelDetails(
+    isAirTravel = map.getNullableBoolean(IS_AIR_TRAVEL),
+    airlineCarrier = map.getString(AIRLINE_CARRIER),
+    departureDate = map.getString(DEPARTURE_DATE),
+    destination = map.getString(DESTINATION),
+    origin = map.getString(ORIGIN),
+    passengerFirstName = map.getString(PASSENGER_FIRST_NAME),
+    passengerLastName = map.getString(PASSENGER_LAST_NAME)
+  )
+
+  private fun ReadableMap.getNullableInt(key: String) =
+    if (hasKey(key) && !isNull(key)) getInt(key) else null
+
+  private inline fun <reified T : Enum<T>> enumValueOrDefault(value: String?, default: T): T =
+    value?.let { runCatching { enumValueOf<T>(it) }.getOrDefault(default) } ?: default
+
+  private fun ReadableMap.getRequiredString(key: String): String =
+    getString(key) ?: throw IllegalArgumentException("$key is required")
+
+  private fun ReadableMap.getNullableBoolean(key: String) =
+    if (hasKey(key) && !isNull(key)) getBoolean(key) else null
+
+  private inline fun <reified T : Enum<T>> ReadableMap.getEnumOrDefault(key: String, default: T) =
+    getString(key)?.let { enumValueOf<T>(it) } ?: default
+
+  private inline fun <reified T : Enum<T>> ReadableMap.getNullableEnum(key: String) =
+    getString(key)?.let { enumValueOf<T>(it) }
+
+  companion object {
+    private const val STREET = "street"
+    private const val STREET_1 = "street1"
+    private const val STREET_2 = "street2"
+    private const val NICK_NAME = "nickName"
+    private const val CITY = "city"
+    private const val STATE = "state"
+    private const val COUNTRY = "country"
+    private const val ZIP = "zip"
+    private const val FIRST_NAME = "firstName"
+    private const val LAST_NAME = "lastName"
+    private const val EMAIL = "email"
+    private const val DAY = "day"
+    private const val MONTH = "month"
+    private const val YEAR = "year"
+    private const val LOCALE = "locale"
+    private const val MERCHANT_CUSTOMER_ID = "merchantCustomerId"
+    private const val DATE_OF_BIRTH = "dateOfBirth"
+    private const val MOBILE = "mobile"
+    private const val GENDER = "gender"
+    private const val NATIONALITY = "nationality"
+    private const val IDENTITY_DOCUMENTS = "identityDocuments"
+    private const val SHIP_METHOD = "shipMethod"
+    private const val PHONE = "phone"
+    private const val DYNAMIC_DESCRIPTOR = "dynamicDescriptor"
+    private const val COUNTRY_CODE = "countryCode"
+    private const val CELL_PHONE = "cellPhone"
+    private const val END_DATE = "endDate"
+    private const val FREQUENCY = "frequency"
+    private const val IS_ELECTRONIC_DELIVERY = "isElectronicDelivery"
+    private const val DATA = "data"
+    private const val AUTHENTICATION_METHOD = "authenticationMethod"
+    private const val TIME = "time"
+    private const val PRE_ORDER_ITEM_AVAILABILITY_DATE = "preOrderItemAvailabilityDate"
+    private const val PRE_ORDER_PURCHASE_INDICATOR = "preOrderPurchaseIndicator"
+    private const val REORDER_ITEMS_INDICATOR = "reorderItemsIndicator"
+    private const val SHIPPING_INDICATOR = "shippingIndicator"
+    private const val AMOUNT = "amount"
+    private const val COUNT = "count"
+    private const val CURRENCY = "currency"
+    private const val CARD_HOLDER_NAME_MATCH = "cardHolderNameMatch"
+    private const val INITIAL_USAGE_DATE = "initialUsageDate"
+    private const val INITIAL_USAGE_RANGE = "initialUsageRange"
+    private const val CREATED_DATE = "createdDate"
+    private const val CREATED_RANGE = "createdRange"
+    private const val METHOD = "method"
+    private const val ID = "id"
+    private const val IS_AIR_TRAVEL = "isAirTravel"
+    private const val AIRLINE_CARRIER = "airlineCarrier"
+    private const val DEPARTURE_DATE = "departureDate"
+    private const val DESTINATION = "destination"
+    private const val ORIGIN = "origin"
+    private const val PASSENGER_FIRST_NAME = "passengerFirstName"
+    private const val PASSENGER_LAST_NAME = "passengerLastName"
+    private const val CHANGED_DATE = "changedDate"
+    private const val PASSWORD_CHANGED_DATE = "passwordChangedDate"
+    private const val PASSWORD_CHANGED_RANGE = "passwordChangedRange"
+    private const val MERCHANT_URL = "merchantUrl"
+    private const val TOTAL_PURCHASES = "totalPurchasesSixMonthCount"
+    private const val TRANSACTION_COUNT = "transactionCountForPreviousDay"
+    private const val TRANSACTION_COUNT_FOR_YEAR = "transactionCountForPreviousYear"
+    private const val SUSPICIOUS_ACCOUNT_ACTIVITY = "suspiciousAccountActivity"
+    private const val SHIPPING_DETAILS_USAGE = "shippingDetailsUsage"
+    private const val PAYMENT_ACCOUNT_DETAILS = "paymentAccountDetails"
+    private const val USER_LOGIN = "userLogin"
+    private const val PRIOR_THREE_DS_AUTHENTICATION = "priorThreeDSAuthentication"
+    private const val TRAVEL_DETAILS = "travelDetails"
+    private const val AUTHENTICATION_PURPOSE = "authenticationPurpose"
+    private const val BILLING_CYCLE = "billingCycle"
+    private const val ELECTRONIC_DELIVERY = "electronicDelivery"
+    private const val THREE_DS_PROFILE = "threeDSProfile"
+    private const val MESSAGE_CATEGORY = "messageCategory"
+    private const val REQUESTOR_CHALLENGE = "requestorChallengePreference"
+    private const val TRANSACTION_INTENT = "transactionIntent"
+    private const val ORDER_ITEM_DETAILS = "orderItemDetails"
+    private const val PURCHASE_GIST_CARD_DETAILS = "purchasedGiftCardDetails"
+    private const val USER_ACCOUNT_DETAILS = "userAccountDetails"
+    private const val CURRENCY_CODE = "currencyCode"
+    private const val TRANSACTION_TYPE = "transactionType"
+    private const val MERCHANT_REF_NUM = "merchantRefNum"
+    private const val ACCOUNT_ID = "accountId"
+    private const val BILLING_DETAILS = "billingDetails"
+    private const val PROFILE = "profile"
+    private const val MERCHANT_DESCRIPTOR = "merchantDescriptor"
+    private const val SHIPPING_DETAILS = "shippingDetails"
+    private const val SIMULATOR = "simulator"
+    private const val THREE_DS = "threeDS"
+  }
+}
